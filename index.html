@@ -404,6 +404,10 @@ canvas { display: block; }
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
+
+const ASSET_BASE_URL = 'https://api.getlayers.ai/storage/v1/object/public/public/assets/clarix-281ac6c399';
 
 /* ============ scenes ============ */
 const bgScene = new THREE.Scene();
@@ -556,6 +560,162 @@ bgMesh.frustumCulled = false;
 bgScene.add(bgMesh);
 
 
+/* ============ B. holographic ASCII shader patch ============ */
+function applyHolographicShader(mat) {
+  mat.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, {
+      time: shaderUniforms.time,
+      colorCyan: shaderUniforms.colorCyan,
+      colorPurple: shaderUniforms.colorPurple,
+      colorBlue: shaderUniforms.colorBlue,
+      colorPeach: shaderUniforms.colorPeach,
+      colorHotPink: shaderUniforms.colorHotPink,
+      edgeBlurAmount: shaderUniforms.edgeBlurAmount,
+      uRevealProgress: shaderUniforms.uRevealProgress,
+      uRevealOrigin: shaderUniforms.uRevealOrigin,
+      resolution: shaderUniforms.resolution
+    });
+
+    shader.vertexShader = `varying vec3 vLocalPosition;\n` + shader.vertexShader;
+    shader.vertexShader = shader.vertexShader.replace(
+      `#include <begin_vertex>`,
+      `#include <begin_vertex>
+       #ifdef USE_INSTANCING
+         vLocalPosition = (instanceMatrix * vec4(position, 1.0)).xyz;
+       #else
+         vLocalPosition = position;
+       #endif`
+    );
+
+    shader.fragmentShader =
+      `uniform float time;\nuniform float edgeBlurAmount;\nuniform float uRevealProgress;\nuniform vec2 uRevealOrigin;\nuniform vec2 resolution;\nuniform vec3 colorCyan;\nuniform vec3 colorPurple;\nuniform vec3 colorBlue;\nuniform vec3 colorPeach;\nuniform vec3 colorHotPink;\nvarying vec3 vLocalPosition;\n`
+      + shader.fragmentShader;
+
+    shader.fragmentShader = shader.fragmentShader.replace(
+      `#include <dithering_fragment>`,
+      `#include <dithering_fragment>
+      vec3 vDir = normalize( vViewPosition );
+      float fresnel = 1.0 - max(dot(vDir, normal), 0.0);
+      float fresnelPow = pow(fresnel, 2.0);
+
+      float hWave1 = sin(vLocalPosition.x * 2.0 - time * 1.0);
+      float hWave2 = cos(vLocalPosition.y * 1.5 + time * 0.8);
+      float hWave3 = sin(vLocalPosition.z * 2.5 + time * 0.5);
+      float combinedWave = (hWave1 + hWave2 + hWave3) / 3.0;
+      combinedWave = smoothstep(-0.5, 0.5, combinedWave);
+
+      float wavePeach = sin(vLocalPosition.y * 2.0 - vLocalPosition.x * 1.0 + time * 1.2) * 0.5 + 0.5;
+
+      vec3 mixColor = mix(colorBlue, colorCyan, combinedWave);
+      vec3 pinkTransition = mix(mixColor, colorHotPink, smoothstep(0.2, 0.8, wavePeach));
+      mixColor = mix(pinkTransition, colorPeach, smoothstep(0.5, 0.95, wavePeach));
+      mixColor = mix(mixColor, colorPurple, fresnel);
+
+      vec3 glow = colorCyan * fresnelPow * 1.5;
+
+      float distortion = sin(vLocalPosition.x * 2.5 + time * 0.5) * 0.4 + cos(vLocalPosition.z * 2.0) * 0.4;
+      float curvedY = vLocalPosition.y + distortion;
+      float lines = fract((curvedY - time * 0.2) * 1.2);
+      float lineIntensity = smoothstep(0.2, 0.6, lines) * smoothstep(1.0, 0.6, lines);
+      vec3 lineGlow = vec3(0.2, 0.8, 1.0) * lineIntensity * (0.3 + fresnel * 1.0);
+
+      vec3 finalEmission = mixColor * 0.6 + glow + lineGlow;
+
+      float pixelSize = 8.0;
+      vec2 asciiUv = fract(gl_FragCoord.xy / pixelSize) - 0.5;
+      float luma = dot(finalEmission, vec3(0.2126, 0.7152, 0.0722));
+      float currentSize = clamp(luma * 1.2, 0.05, 0.45);
+      float currentRadius = mix(0.0, currentSize, wavePeach);
+      float dBox = length(max(abs(asciiUv) - (currentSize - currentRadius), 0.0)) - currentRadius;
+      float shapeAlpha = smoothstep(1.5 / pixelSize, 0.0, dBox);
+      if (shapeAlpha < 0.1) discard;
+
+      float edgeStart = mix(1.0, 0.7, edgeBlurAmount);
+      float edgeEnd = mix(0.99, 0.1, edgeBlurAmount);
+      float edgeBlur = smoothstep(edgeStart, edgeEnd, fresnel);
+
+      finalEmission *= 1.2;
+
+      vec2 screenUv = gl_FragCoord.xy / resolution.xy;
+      screenUv.x *= resolution.x / resolution.y;
+
+      if (uRevealProgress < 0.999) {
+        vec2 revealOrigin = uRevealOrigin;
+        float distFromCenter2D = distance(screenUv, revealOrigin);
+        float currentRadius2D = uRevealProgress * 3.0;
+        float gridRandom = fract(sin(dot(floor(gl_FragCoord.xy / 8.0), vec2(12.9898, 78.233))) * 43758.5453);
+        float noisyRadius2D = currentRadius2D - gridRandom * 0.15 * (1.0 - uRevealProgress);
+        if (distFromCenter2D > noisyRadius2D) discard;
+        float revealEdge = smoothstep(noisyRadius2D - 0.05, noisyRadius2D, distFromCenter2D);
+        vec3 revealGlow = colorHotPink * revealEdge * 3.0 + colorCyan * pow(revealEdge, 4.0) * 8.0;
+        finalEmission += revealGlow;
+      }
+
+      gl_FragColor = vec4(gl_FragColor.rgb + finalEmission, gl_FragColor.a * shapeAlpha * edgeBlur);`
+    );
+  };
+}
+
+
+/* ============ the model (DRACO-compressed GLB) ============ */
+let mainModel = null;
+let mainModelMaterial = null;
+let baseModelScale = 1.0;
+let currentModelScale = 1.0;
+let heroRevealed = false;
+let mixer = null;
+
+const dracoLoader = new DRACOLoader();
+dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/');
+const loader = new GLTFLoader();
+loader.setDRACOLoader(dracoLoader);
+
+loader.load(`${ASSET_BASE_URL}/model.glb`, (gltf) => {
+  const model = gltf.scene;
+
+  // auto center + scale so max dimension becomes 5 units
+  const box = new THREE.Box3().setFromObject(model);
+  const size = box.getSize(new THREE.Vector3());
+  const scale = 5 / Math.max(size.x, size.y, size.z);
+  baseModelScale = scale;
+  currentModelScale = scale;
+  model.scale.setScalar(scale);
+
+  const scaledBox = new THREE.Box3().setFromObject(model);
+  const center = scaledBox.getCenter(new THREE.Vector3());
+  model.position.sub(center);
+
+  model.position.set(0.1, -3.93, 4.17);
+  model.rotation.set(-0.05026, -0.92781, -0.12566);
+
+  model.traverse((child) => {
+    if (!child.isMesh) return;
+    const baseMat = new THREE.MeshPhysicalMaterial({
+      color: 0x010103, metalness: 0.9, roughness: 0.2, clearcoat: 1.0, clearcoatRoughness: 0.1,
+      transparent: true, opacity: 0.95, side: THREE.DoubleSide
+    });
+    applyHolographicShader(baseMat);
+    child.material = baseMat;
+    child.frustumCulled = false;
+    if (!mainModelMaterial) mainModelMaterial = baseMat;
+  });
+
+  model.visible = heroRevealed;
+  scene.add(model);
+  mainModel = model;
+
+  if (gltf.animations.length > 0) {
+    mixer = new THREE.AnimationMixer(model);
+    gltf.animations.forEach(clip => mixer.clipAction(clip).play());
+  }
+}, undefined, (err) => console.error('model.glb failed to load', err));
+
+camera.position.set(-1.8, -1.0, 6.5);
+camera.lookAt(-1.8, 0.5, 0);
+controls.target.set(-1.8, 0.5, 0);
+controls.update();
+
+
 /* ============ animation loop ============ */
 let revealStartTime = 0;
 
@@ -566,6 +726,82 @@ function animate(time) {
   shaderUniforms.time.value += delta;
   shaderUniforms.mouse.value.lerp(targetMouse, delta * 3.0);
 
+  /* ---- camera ---- */
+  const targetCamX   = THREE.MathUtils.lerp(-1.8, -0.6, transitionProgress);
+  const targetFocusX = THREE.MathUtils.lerp(-1.8, -0.6, transitionProgress);
+  const targetCamY   = THREE.MathUtils.lerp(-1.0, -2.0, transitionProgress);
+  const targetFocusY = THREE.MathUtils.lerp(0.5, -2.0, transitionProgress);
+  const phase3CamZ   = THREE.MathUtils.lerp(7.5, 7.15, phase3Progress);
+  const targetCamZ   = THREE.MathUtils.lerp(6.5, phase3CamZ, transitionProgress);
+  const finalCamZ    = THREE.MathUtils.lerp(targetCamZ, 0.5, phase5Progress);
+  const lerpSpeed = Math.min(1, delta * 6.0);
+
+  camera.position.x = snapLerp(camera.position.x, targetCamX, lerpSpeed);
+  camera.position.y = snapLerp(camera.position.y, targetCamY, lerpSpeed);
+  camera.position.z = snapLerp(camera.position.z, finalCamZ, lerpSpeed);
+  controls.target.x = snapLerp(controls.target.x, targetFocusX, lerpSpeed);
+  controls.target.y = snapLerp(controls.target.y, targetFocusY, lerpSpeed);
+
+  const pointerX = targetMouse.x * 2 - 1, pointerY = targetMouse.y * 2 - 1;
+
+  /* ---- model ---- */
+  if (mainModel) {
+    const baseModelX = THREE.MathUtils.lerp(-0.6, -0.5, transitionProgress);
+    const baseModelY = THREE.MathUtils.lerp(-3.93, -6.15, transitionProgress);
+    const baseModelZ = THREE.MathUtils.lerp(4.17, 7.0, transitionProgress);
+    const targetModelX = THREE.MathUtils.lerp(baseModelX, guiParams.phase4X, phase4Progress);
+    const targetModelY = THREE.MathUtils.lerp(baseModelY, guiParams.phase4Y, phase4Progress);
+    const targetModelZ = THREE.MathUtils.lerp(baseModelZ, guiParams.phase4Z, phase4Progress);
+    const p6Ease = 1.0 - Math.pow(1.0 - modelFlyInProgress, 3);
+    const p6ModelX = THREE.MathUtils.lerp(targetModelX, -0.4, p6Ease);
+    const p6ModelY = THREE.MathUtils.lerp(targetModelY, -5.2, p6Ease);
+    const p6ModelZ = THREE.MathUtils.lerp(targetModelZ, -1.0, p6Ease);
+
+    const mouseRotX = pointerY * 0.05, mouseRotY = pointerX * 0.10;
+    const rotProgress = Math.max(0, Math.min(1.0, (scrollProgress - 0.12) / 0.28));
+
+    const targetModelRotX = THREE.MathUtils.lerp(-0.05026, -0.2, transitionProgress);
+    const finalRotX = THREE.MathUtils.lerp(targetModelRotX, guiParams.phase4RotX, phase4Progress);
+    const p6RotX = THREE.MathUtils.lerp(finalRotX, 0.0 + mouseRotX, p6Ease);
+
+    const initialRotY = -0.92781;
+    const transitionRotY = THREE.MathUtils.lerp(initialRotY, initialRotY + Math.PI, transitionProgress);
+    const baseRotY = THREE.MathUtils.lerp(transitionRotY, Math.PI * 2, rotProgress);
+    const finalRotY = THREE.MathUtils.lerp(baseRotY, guiParams.phase4RotY, phase4Progress);
+    const p6RotY = THREE.MathUtils.lerp(finalRotY, 0.0 + mouseRotY, p6Ease);
+
+    const targetModelRotZ = THREE.MathUtils.lerp(-0.12566, 0.0, transitionProgress);
+    const finalRotZ = THREE.MathUtils.lerp(targetModelRotZ, guiParams.phase4RotZ, phase4Progress);
+    const p6RotZ = THREE.MathUtils.lerp(finalRotZ, 0.0, p6Ease);
+
+    mainModel.position.x = snapLerp(mainModel.position.x, p6ModelX, lerpSpeed);
+    mainModel.position.y = snapLerp(mainModel.position.y, p6ModelY, lerpSpeed);
+    mainModel.position.z = snapLerp(mainModel.position.z, p6ModelZ, lerpSpeed);
+    mainModel.rotation.x = snapLerp(mainModel.rotation.x, p6RotX, lerpSpeed);
+    mainModel.rotation.y = snapLerp(mainModel.rotation.y, p6RotY, lerpSpeed);
+    mainModel.rotation.z = snapLerp(mainModel.rotation.z, p6RotZ, lerpSpeed);
+
+    const finalScale = baseModelScale * guiParams.phase4Scale;
+    const targetScale = THREE.MathUtils.lerp(baseModelScale, finalScale, phase4Progress);
+    currentModelScale = snapLerp(currentModelScale, targetScale, lerpSpeed);
+    mainModel.scale.setScalar(currentModelScale);
+
+    let targetOpacity = 0.95;
+    if (modelFlyInProgress > 0) targetOpacity = THREE.MathUtils.lerp(0.0, 0.95, Math.min(1.0, modelFlyInProgress * 2.0));
+    else if (phase5Progress > 0) targetOpacity = THREE.MathUtils.lerp(0.95, 0.0, Math.min(1.0, phase5Progress * 2.0));
+    if (mainModelMaterial) mainModelMaterial.opacity = targetOpacity;
+
+    if (shaderUniforms.uRevealProgress.value < 0.999) {
+      mainModel.getWorldPosition(_revealVec);
+      _revealVec.project(camera);
+      shaderUniforms.uRevealOrigin.value.set(
+        (_revealVec.x * 0.5 + 0.5) * (window.innerWidth / window.innerHeight),
+        _revealVec.y * 0.5 + 0.5
+      );
+    }
+  }
+
+  if (mixer) mixer.update(delta);
   controls.update();
   rendererBg.render(bgScene, camera);
   renderer.render(scene, camera);
