@@ -416,12 +416,10 @@ const lenis = new Lenis({
   easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t))
 });
 
-
 /* ============ marquee (text stack, two sets for seamless loop) ============ */
 const STACK = ['TypeScript', 'Three.js', 'GLSL', 'React', 'Next.js', 'Node', 'Python', 'Postgres', 'GSAP', 'Figma', 'Docker'];
 document.getElementById('marquee-content').innerHTML =
   [...STACK, ...STACK].map(s => `<span class="marquee-item">${s}</span>`).join('');
-
 
 /* ============ flying words ============ */
 const splitWord = (el, word) => {
@@ -430,7 +428,6 @@ const splitWord = (el, word) => {
 splitWord(document.getElementById('word1'), 'design');
 splitWord(document.getElementById('word2'), 'build');
 splitWord(document.getElementById('word3'), 'ship');
-
 
 /* ============ scenes ============ */
 const bgScene = new THREE.Scene();
@@ -473,7 +470,6 @@ const dir2 = new THREE.DirectionalLight(0xffffff, 1.0);
 dir2.position.set(-5, -5, -5);
 scene.add(dir2);
 
-
 /* ============ shared uniforms ============ */
 const clock = new THREE.Clock();
 const targetMouse = new THREE.Vector2(0.5, 0.5);
@@ -494,7 +490,6 @@ const shaderUniforms = {
 };
 
 const guiParams = { phase4X: -1.35, phase4Y: -5.4, phase4Z: 5.67, phase4Scale: 0.85, phase4RotX: 0, phase4RotY: 0.6723, phase4RotZ: 0 };
-
 
 /* ============ A. background ASCII grid ============ */
 const bgMat = new THREE.ShaderMaterial({
@@ -581,7 +576,6 @@ const bgMesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), bgMat);
 bgMesh.renderOrder = -1;
 bgMesh.frustumCulled = false;
 bgScene.add(bgMesh);
-
 
 /* ============ B. holographic ASCII shader patch ============ */
 function applyHolographicShader(mat) {
@@ -679,7 +673,6 @@ function applyHolographicShader(mat) {
   };
 }
 
-
 /* ============ the model (DRACO-compressed GLB) ============ */
 let mainModel = null;
 let mainModelMaterial = null;
@@ -738,6 +731,194 @@ camera.lookAt(-1.8, 0.5, 0);
 controls.target.set(-1.8, 0.5, 0);
 controls.update();
 
+/* ============ C. name particle system (canvas-sampled text) ============ */
+const NAME_TEXT = 'TARUN';
+const particleMat = new THREE.ShaderMaterial({
+  uniforms: {
+    time: shaderUniforms.time, uProgress: { value: 0.0 }, uScale: { value: 1.0 }, uShatterFade: { value: 0.0 },
+    colorCyan: shaderUniforms.colorCyan, colorBlue: shaderUniforms.colorBlue,
+    colorPeach: shaderUniforms.colorPeach, colorHotPink: shaderUniforms.colorHotPink
+  },
+  vertexShader: /* glsl */`
+    uniform float time;
+    uniform float uProgress;
+    uniform float uScale;
+    attribute vec3 aRandomPosition;
+    attribute float aDelay;
+    attribute float aIsAmbient;
+    varying vec3 vLocalPosition;
+    varying float vIsAmbient;
+
+    void main() {
+      vLocalPosition = position;
+      vIsAmbient = aIsAmbient;
+
+      float safeProgress = clamp(uProgress, 0.0, 1.0);
+      float startThreshold = aDelay * 0.4;
+      float particleProgress = clamp((safeProgress - startThreshold) / (1.0 - startThreshold), 0.0, 1.0);
+      float rushEase = 1.0 - pow(1.0 - particleProgress, 4.0);
+
+      float spin = (1.0 - particleProgress) * 10.0;
+      float s = sin(spin);
+      float c = cos(spin);
+
+      vec3 spiraledPos = aRandomPosition;
+      spiraledPos.x = aRandomPosition.x * c - aRandomPosition.z * s;
+      spiraledPos.z = aRandomPosition.x * s + aRandomPosition.z * c;
+      spiraledPos.z *= 0.15;
+      spiraledPos.y = mix(spiraledPos.y, position.y, rushEase);
+
+      vec3 currentPos = mix(spiraledPos, position, rushEase);
+
+      float driftFactor = (aIsAmbient > 0.5) ? 1.0 : (1.0 - rushEase);
+      if (driftFactor > 0.01) {
+         currentPos.x += sin(time * 0.4 + aRandomPosition.y) * 1.5 * driftFactor;
+         currentPos.y += cos(time * 0.3 + aRandomPosition.x) * 1.5 * driftFactor;
+         currentPos.z += sin(time * 0.5 + aRandomPosition.z) * 1.5 * driftFactor;
+      }
+
+      vec4 mvPosition = modelViewMatrix * vec4(currentPos, 1.0);
+      float shatterBoost = mix(4.5, 1.0, rushEase);
+      float baseSize = (aIsAmbient > 0.5 ? 40.0 : (16.0 * shatterBoost)) * uScale;
+      gl_PointSize = clamp(baseSize / max(0.5, -mvPosition.z), 4.0, 120.0);
+      gl_Position = projectionMatrix * mvPosition;
+    }
+  `,
+  fragmentShader: /* glsl */`
+    uniform float time;
+    uniform float uProgress;
+    uniform float uShatterFade;
+    uniform vec3 colorCyan;
+    uniform vec3 colorBlue;
+    uniform vec3 colorPeach;
+    uniform vec3 colorHotPink;
+    varying vec3 vLocalPosition;
+    varying float vIsAmbient;
+
+    void main() {
+      vec2 cxy = 2.0 * gl_PointCoord - 1.0;
+      float r = dot(cxy, cxy);
+      if (r > 1.0) discard;
+
+      float dist = sqrt(r);
+      float glow = smoothstep(1.0, 0.2, dist);
+
+      float waveX = sin(time * 1.5) * 1.5;
+      float waveY = cos(time * 1.2) * 0.8;
+
+      float effX = vIsAmbient > 0.5 ? mod(vLocalPosition.x + time, 6.0) - 3.0 : vLocalPosition.x;
+      float effY = vIsAmbient > 0.5 ? mod(vLocalPosition.y + time, 2.0) - 1.0 : vLocalPosition.y;
+
+      float tX = smoothstep(-3.0, 3.0, effX + waveX);
+      float tY = smoothstep(-1.0, 1.0, effY + waveY);
+
+      vec3 leftColor = mix(colorBlue, colorCyan, tY);
+      vec3 rightColor = mix(colorHotPink, colorPeach, tY);
+      vec3 finalColor = mix(leftColor, rightColor, tX) * 1.4;
+
+      float alphaMultiplier = vIsAmbient > 0.5 ? 1.0 : (1.0 - uShatterFade);
+      float globalFadeIn = smoothstep(0.0, 0.15, uProgress);
+
+      gl_FragColor = vec4(finalColor, glow * alphaMultiplier * globalFadeIn);
+    }
+  `,
+  transparent: true, depthWrite: false, blending: THREE.NormalBlending
+});
+
+let logoParticles = null;
+
+function buildNameParticles() {
+  const W = 450;
+  const cv = document.createElement('canvas');
+  const ctx = cv.getContext('2d');
+  cv.width = W;
+  ctx.font = `700 150px Sarabun, sans-serif`;
+  const metrics = ctx.measureText(NAME_TEXT);
+  const scaleToFit = (W - 20) / metrics.width;
+  const fontPx = Math.floor(150 * scaleToFit);
+  cv.height = Math.round(fontPx * 1.35);
+  ctx.font = `700 ${fontPx}px Sarabun, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#fff';
+  ctx.fillText(NAME_TEXT, cv.width / 2, cv.height / 2);
+
+  const data = ctx.getImageData(0, 0, cv.width, cv.height).data;
+  const w = cv.width, h = cv.height;
+  const alphaAt = (x, y) => (x < 0 || y < 0 || x >= w || y >= h) ? 0 : data[(y * w + x) * 4 + 3];
+
+  const thickness = 0.25;
+  const sidePoints = 3;
+  const pts = [];
+  const step = 2; // ponytail: sample every 2px, drop to 1 if the name reads too sparse
+  for (let y = 0; y < h; y += step) {
+    for (let x = 0; x < w; x += step) {
+      if (alphaAt(x, y) <= 128) continue;
+      pts.push({ x, y, z: thickness / 2, isAmbient: 0 });
+      pts.push({ x, y, z: -thickness / 2, isAmbient: 0 });
+      const edge = alphaAt(x - step, y) < 128 || alphaAt(x + step, y) < 128
+                || alphaAt(x, y - step) < 128 || alphaAt(x, y + step) < 128;
+      if (edge) {
+        for (let i = 0; i < sidePoints; i++) {
+          pts.push({ x, y, z: -thickness / 2 + (thickness * (i + 1)) / (sidePoints + 1), isAmbient: 0 });
+        }
+      }
+    }
+  }
+
+  const ambientCount = 3500;
+  for (let i = 0; i < ambientCount; i++) {
+    pts.push({
+      x: w / 2 + (Math.random() - 0.5) * w * 3.0,
+      y: h / 2 + (Math.random() - 0.5) * h * 10.0,
+      z: (Math.random() - 0.5) * 20.0,
+      isAmbient: 1
+    });
+  }
+
+  const logoScale = 5.7 / w;
+  const count = pts.length;
+  const position = new Float32Array(count * 3);
+  const aRandomPosition = new Float32Array(count * 3);
+  const aDelay = new Float32Array(count);
+  const aIsAmbient = new Float32Array(count);
+
+  for (let i = 0; i < count; i++) {
+    const pt = pts[i];
+    const jx = (Math.random() - 0.5) * 1.2;
+    const jy = (Math.random() - 0.5) * 1.2;
+    const jz = (Math.random() - 0.5) * 0.1;
+
+    const tx = (pt.x + jx - w / 2) * logoScale;
+    const ty = -(pt.y + jy - h / 2) * logoScale;
+    const tz = pt.z + jz;
+    position[i * 3] = tx; position[i * 3 + 1] = ty; position[i * 3 + 2] = tz;
+
+    const angle = Math.random() * Math.PI * 2;
+    const radius = 25 + Math.random() * 25;
+    aRandomPosition[i * 3] = Math.cos(angle) * radius;
+    aRandomPosition[i * 3 + 1] = (Math.random() - 0.5) * 45;
+    aRandomPosition[i * 3 + 2] = Math.sin(angle) * radius;
+
+    const distFromCenter = Math.min(1, Math.hypot(tx, ty) / 3.0);
+    aDelay[i] = Math.random() * 0.5 + distFromCenter * 0.5;
+    aIsAmbient[i] = pt.isAmbient;
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(position, 3));
+  geo.setAttribute('aRandomPosition', new THREE.BufferAttribute(aRandomPosition, 3));
+  geo.setAttribute('aDelay', new THREE.BufferAttribute(aDelay, 1));
+  geo.setAttribute('aIsAmbient', new THREE.BufferAttribute(aIsAmbient, 1));
+
+  logoParticles = new THREE.Points(geo, particleMat);
+  logoParticles.position.set(-0.6, -2.0, -3.0);
+  logoParticles.frustumCulled = false;
+  logoParticles.visible = false;
+  scene.add(logoParticles);
+}
+// wait for the webfont so the sampled letterforms match the page
+(document.fonts ? document.fonts.ready : Promise.resolve()).then(buildNameParticles);
 
 /* ============ preloader blob ============ */
 const preloaderPointsMat = new THREE.ShaderMaterial({
@@ -804,7 +985,6 @@ preloaderPoints.position.set(-1.8, -0.25, 4.5);
 preloaderPoints.lookAt(-1.8, -1.0, 6.5);
 scene.add(preloaderPoints);
 
-
 /* ============ odometer ============ */
 const odoNumbers = document.getElementById('odometer-numbers');
 odoNumbers.innerHTML = Array.from({ length: 101 }, (_, i) =>
@@ -825,7 +1005,6 @@ function advanceLoader() {
   setTimeout(advanceLoader, 300);
 }
 setTimeout(advanceLoader, 200);
-
 
 /* ============ title splitting ============ */
 function splitNode(node) {
@@ -885,7 +1064,6 @@ function triggerTextReveal(selector) {
   el.querySelectorAll('.hero-char').forEach((c, i) => setTimeout(() => c.classList.add('revealed'), i * 10));
 }
 
-
 /* ============ scroll progress ============ */
 let scrollProgress = 0;
 let _ratio = window.innerWidth / 1200;
@@ -912,7 +1090,6 @@ window.addEventListener('resize', () => {
   const _newRatio = window.innerWidth / 1200;
   responsiveScale = _newRatio <= 1.0 ? _newRatio : 1.0 + (_newRatio - 1.0) * 0.4;
 });
-
 
 /* ============ flying words driver ============ */
 function updateWordAnimation(el, p, start, end, stopAtCenter = false) {
@@ -983,7 +1160,6 @@ function updateWordAnimation(el, p, start, end, stopAtCenter = false) {
   el.style.transform = `translate3d(calc(-50% + ${xOff}px), calc(-50% + ${yOff}vh), ${zOff}px) rotateY(${rotY}deg)`;
 }
 
-
 /* ============ DOM refs ============ */
 const word1 = document.getElementById('word1');
 const word2 = document.getElementById('word2');
@@ -999,7 +1175,6 @@ const snapLerp = (current, target, speed) => {
   if (Math.abs(target - current) < 0.0001) return target;
   return THREE.MathUtils.lerp(current, target, speed);
 };
-
 
 /* ============ animation loop ============ */
 let revealStartTime = 0;
@@ -1127,6 +1302,37 @@ function animate(time) {
         (_revealVec.x * 0.5 + 0.5) * (window.innerWidth / window.innerHeight),
         _revealVec.y * 0.5 + 0.5
       );
+    }
+  }
+
+  /* ---- name particles ---- */
+  if (logoParticles) {
+    if (phase5Progress > 0) {
+      logoParticles.visible = true;
+      let targetProgress = phase5Progress;
+      const targetFade = 0;
+      if (logoShatterProgress > 0) {
+        const explodeEase = THREE.MathUtils.smoothstep(logoShatterProgress, 0, 1);
+        targetProgress = 1 - Math.pow(explodeEase, 0.3);
+      }
+      const u = particleMat.uniforms;
+      u.uProgress.value = snapLerp(u.uProgress.value, targetProgress, lerpSpeed * 1.5);
+      u.uShatterFade.value = snapLerp(u.uShatterFade.value, targetFade, lerpSpeed * 1.5);
+
+      logoParticles.rotation.x = pointerY * 0.15 * phase5Progress;
+      logoParticles.rotation.y = pointerX * 0.25 * phase5Progress;
+
+      const p6Ease = THREE.MathUtils.smoothstep(modelFlyInProgress, 0, 1);
+      const targetScale = THREE.MathUtils.lerp(1.0, 1.4, p6Ease) * responsiveScale;
+      const s = snapLerp(logoParticles.scale.x, targetScale, lerpSpeed);
+      logoParticles.scale.setScalar(s);
+      u.uScale.value = s;
+    } else {
+      logoParticles.visible = false;
+      particleMat.uniforms.uProgress.value = 0;
+      logoParticles.rotation.set(0, 0, 0);
+      logoParticles.scale.setScalar(1);
+      particleMat.uniforms.uScale.value = 1;
     }
   }
 
