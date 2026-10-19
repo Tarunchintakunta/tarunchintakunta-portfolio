@@ -716,6 +716,153 @@ controls.target.set(-1.8, 0.5, 0);
 controls.update();
 
 
+/* ============ preloader blob ============ */
+const preloaderPointsMat = new THREE.ShaderMaterial({
+  uniforms: {
+    time: shaderUniforms.time, colorCyan: shaderUniforms.colorCyan, colorPurple: shaderUniforms.colorPurple,
+    colorBlue: shaderUniforms.colorBlue, colorPeach: shaderUniforms.colorPeach, colorHotPink: shaderUniforms.colorHotPink,
+    uShatter: { value: 0.0 }
+  },
+  vertexShader: /* glsl */`
+    uniform float uShatter;
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      vec3 pos = position;
+      pos *= (1.0 + uShatter * 2.0);
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+    }
+  `,
+  fragmentShader: /* glsl */`
+    uniform float time;
+    uniform float uShatter;
+    uniform vec3 colorCyan;
+    uniform vec3 colorPurple;
+    uniform vec3 colorBlue;
+    uniform vec3 colorPeach;
+    uniform vec3 colorHotPink;
+    varying vec2 vUv;
+
+    void main() {
+      vec2 center = vec2(0.5, 0.5);
+      vec2 st = vUv - center;
+      float angle = atan(st.y, st.x);
+      float radius = length(st);
+
+      float wobble = sin(angle * 3.0 + time * 1.5) * 0.03 + cos(angle * 2.0 - time) * 0.04;
+      float maxRadius = 0.35 + wobble;
+      float currentRadius = maxRadius * (1.0 + uShatter * 1.5);
+
+      float alpha = smoothstep(currentRadius + 0.08, currentRadius - 0.02, radius);
+      float shatterNoise = fract(sin(dot(vUv * 10.0, vec2(12.9898, 78.233))) * 43758.5453);
+      alpha -= (shatterNoise * uShatter * 2.0);
+      alpha *= (1.0 - uShatter);
+      if (alpha <= 0.01) discard;
+
+      vec2 p = vUv * 2.0 - 1.0;
+      float wave1 = sin(p.x * 2.0 - time * 1.0);
+      float wave2 = cos(p.y * 1.5 + time * 0.8);
+      float combinedWave = smoothstep(-0.5, 0.5, (wave1 + wave2)/2.0);
+      float wavePeach = sin(p.y * 2.0 - p.x * 1.0 + time * 1.2) * 0.5 + 0.5;
+
+      vec3 mixColor = mix(colorBlue, colorCyan, combinedWave);
+      vec3 pinkTransition = mix(mixColor, colorHotPink, smoothstep(0.2, 0.8, wavePeach));
+      mixColor = mix(pinkTransition, colorPeach, smoothstep(0.5, 0.95, wavePeach));
+      mixColor = mix(mixColor, colorPurple, smoothstep(0.2, 0.45, radius));
+      mixColor = mix(mixColor, vec3(1.0), 0.35);
+
+      gl_FragColor = vec4(mixColor, alpha);
+    }
+  `,
+  transparent: true, depthWrite: false
+});
+const preloaderPoints = new THREE.Mesh(new THREE.PlaneGeometry(4, 4), preloaderPointsMat);
+preloaderPoints.position.set(-1.8, -0.25, 4.5);
+preloaderPoints.lookAt(-1.8, -1.0, 6.5);
+scene.add(preloaderPoints);
+
+
+/* ============ odometer ============ */
+const odoNumbers = document.getElementById('odometer-numbers');
+odoNumbers.innerHTML = Array.from({ length: 101 }, (_, i) =>
+  `<div style="height:4rem;line-height:4rem;text-align:center;">${String(i).padStart(3, '0')}</div>`
+).join('');
+
+let preloaderDone = false;
+let preloaderCurrentPercent = 0;
+let preloaderTargetPercent = 0;
+let preloaderShatter = 0.0;
+
+const loaderSteps = [25, 50, 75, 100];
+let loaderStepIndex = 0;
+function advanceLoader() {
+  if (loaderStepIndex >= loaderSteps.length) return;
+  preloaderTargetPercent = loaderSteps[loaderStepIndex];
+  loaderStepIndex++;
+  setTimeout(advanceLoader, 300);
+}
+setTimeout(advanceLoader, 200);
+
+
+/* ============ title splitting ============ */
+function splitNode(node) {
+  const frag = document.createDocumentFragment();
+  node.childNodes.forEach(child => {
+    if (child.nodeType === Node.TEXT_NODE) {
+      [...child.textContent].forEach(ch => {
+        if (ch === ' ' || ch === ' ') {
+          frag.appendChild(document.createTextNode(ch));
+        } else {
+          const mask = document.createElement('span');
+          mask.className = 'char-mask';
+          const inner = document.createElement('span');
+          inner.className = 'hero-char';
+          inner.textContent = ch;
+          mask.appendChild(inner);
+          frag.appendChild(mask);
+        }
+      });
+    } else if (child.nodeName === 'BR') {
+      frag.appendChild(child.cloneNode());
+    } else {
+      const clone = child.cloneNode(false);
+      clone.appendChild(splitNode(child));
+      frag.appendChild(clone);
+    }
+  });
+  return frag;
+}
+
+function initTitles() {
+  const targets = [document.getElementById('animated-hero-title'), ...document.querySelectorAll('.animated-title')];
+  new Set(targets).forEach(el => {
+    if (!el) return;
+    const split = splitNode(el);
+    el.innerHTML = '';
+    el.appendChild(split);
+  });
+
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      entry.target.querySelectorAll('.hero-char').forEach((c, i) => setTimeout(() => c.classList.add('revealed'), i * 10));
+      io.unobserve(entry.target);
+    });
+  }, { threshold: 0.3 });
+  document.querySelectorAll('.animated-title.flow-title').forEach(el => io.observe(el));
+}
+initTitles();
+
+const _revealedOnce = new Set();
+function triggerTextReveal(selector) {
+  if (_revealedOnce.has(selector)) return;
+  const el = document.querySelector(selector);
+  if (!el) return;
+  _revealedOnce.add(selector);
+  el.querySelectorAll('.hero-char').forEach((c, i) => setTimeout(() => c.classList.add('revealed'), i * 10));
+}
+
+
 /* ============ animation loop ============ */
 let revealStartTime = 0;
 
@@ -725,6 +872,42 @@ function animate(time) {
   const delta = clock.getDelta();
   shaderUniforms.time.value += delta;
   shaderUniforms.mouse.value.lerp(targetMouse, delta * 3.0);
+
+  /* ---- preloader ---- */
+  if (!preloaderDone) {
+    if (preloaderCurrentPercent < preloaderTargetPercent) {
+      preloaderCurrentPercent = Math.min(preloaderTargetPercent, preloaderCurrentPercent + delta * 180);
+      odoNumbers.style.transform = `translateY(-${preloaderCurrentPercent * 4}rem)`;
+    }
+    if (preloaderCurrentPercent >= 100) {
+      preloaderShatter += delta * 2.0;
+      preloaderPointsMat.uniforms.uShatter.value = Math.pow(preloaderShatter, 3.0);
+      if (preloaderShatter > 1.0) {
+        preloaderDone = true;
+        heroRevealed = true;
+        preloaderPoints.visible = false;
+        if (mainModel) mainModel.visible = true;
+        document.getElementById('preloader').style.opacity = '0';
+        document.querySelectorAll('.preload-hidden').forEach(el => el.classList.remove('preload-hidden'));
+        const chars = document.querySelectorAll('#animated-hero-title .hero-char');
+        setTimeout(() => {
+          chars.forEach((char, index) => setTimeout(() => char.classList.add('revealed'), index * 25));
+        }, 150);
+      }
+    }
+    window.scrollTo(0, 0);
+    scrollProgress = 0;
+  }
+
+  // hold the carve-in until the GLB is actually in the scene
+  if (preloaderDone && mainModel && shaderUniforms.uRevealProgress.value < 0.999) {
+    if (!revealStartTime) revealStartTime = shaderUniforms.time.value + 0.5;
+    const elapsed = shaderUniforms.time.value - revealStartTime;
+    if (elapsed > 0) {
+      const progress = Math.min(1.0, elapsed / 2.3);
+      shaderUniforms.uRevealProgress.value = 1 - Math.pow(1 - progress, 3);
+    }
+  }
 
   /* ---- camera ---- */
   const targetCamX   = THREE.MathUtils.lerp(-1.8, -0.6, transitionProgress);
