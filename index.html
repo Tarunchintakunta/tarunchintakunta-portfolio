@@ -406,8 +406,31 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
+import Lenis from 'lenis';
 
 const ASSET_BASE_URL = 'https://api.getlayers.ai/storage/v1/object/public/public/assets/clarix-281ac6c399';
+
+/* ============ smooth scroll ============ */
+const lenis = new Lenis({
+  duration: 1.5,
+  easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t))
+});
+
+
+/* ============ marquee (text stack, two sets for seamless loop) ============ */
+const STACK = ['TypeScript', 'Three.js', 'GLSL', 'React', 'Next.js', 'Node', 'Python', 'Postgres', 'GSAP', 'Figma', 'Docker'];
+document.getElementById('marquee-content').innerHTML =
+  [...STACK, ...STACK].map(s => `<span class="marquee-item">${s}</span>`).join('');
+
+
+/* ============ flying words ============ */
+const splitWord = (el, word) => {
+  el.innerHTML = [...word].map(c => `<span class="char">${c}</span>`).join('');
+};
+splitWord(document.getElementById('word1'), 'design');
+splitWord(document.getElementById('word2'), 'build');
+splitWord(document.getElementById('word3'), 'ship');
+
 
 /* ============ scenes ============ */
 const bgScene = new THREE.Scene();
@@ -863,6 +886,121 @@ function triggerTextReveal(selector) {
 }
 
 
+/* ============ scroll progress ============ */
+let scrollProgress = 0;
+let _ratio = window.innerWidth / 1200;
+let responsiveScale = _ratio <= 1.0 ? _ratio : 1.0 + (_ratio - 1.0) * 0.4;
+
+window.addEventListener('scroll', () => {
+  const maxScroll = document.body.scrollHeight - window.innerHeight;
+  const pauseScroll = window.innerHeight * 1;
+  const animationMaxScroll = Math.max(1, maxScroll - pauseScroll);
+  scrollProgress = Math.max(0, Math.min(window.scrollY / animationMaxScroll, 1.0));
+}, { passive: true });
+
+window.addEventListener('mousemove', (event) => {
+  targetMouse.x = event.clientX / window.innerWidth;
+  targetMouse.y = 1.0 - (event.clientY / window.innerHeight);
+});
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  rendererBg.setSize(window.innerWidth, window.innerHeight);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  shaderUniforms.resolution.value.set(window.innerWidth, window.innerHeight);
+  const _newRatio = window.innerWidth / 1200;
+  responsiveScale = _newRatio <= 1.0 ? _newRatio : 1.0 + (_newRatio - 1.0) * 0.4;
+});
+
+
+/* ============ flying words driver ============ */
+function updateWordAnimation(el, p, start, end, stopAtCenter = false) {
+  if (!el) return;
+  if (p <= start) { el.style.opacity = '0'; return; }
+  let localP = (p - start) / (end - start);
+  if (!stopAtCenter && localP >= 1.0) { el.style.opacity = '0'; return; }
+  let xOff, yOff, rotY, zOff;
+  if (stopAtCenter && localP > 1.0) {
+    const extraP = Math.min(1.0, (localP - 1.0) / 1.25);
+    const easeIn = extraP * extraP;
+    xOff = 0; yOff = 0 - (easeIn * 100); rotY = 0; zOff = -800;
+    el.style.opacity = '1';
+    if (el.children.length > 0) {
+      const speedMultipliers = [0.8, 1.4, 0.5, 1.7, 0.9, 1.2];
+      for (let i = 0; i < el.children.length; i++) {
+        const child = el.children[i];
+        const speed = speedMultipliers[i % speedMultipliers.length];
+        const extraY = -(easeIn * 60 * speed);
+        const blurAmount = easeIn * 24 * speed;
+        child.style.transform = `translate3d(0, ${extraY}vh, 0)`;
+        child.style.opacity = '1';
+        child.style.filter = blurAmount > 0.1 ? `blur(${blurAmount}px)` : 'none';
+      }
+    }
+  } else {
+    const sineInOut = (t) => 0.5 - Math.cos(t * Math.PI) / 2;
+    if (stopAtCenter) {
+      xOff = 1400 - sineInOut(localP) * 1400;
+      const yEaseOut = 1 - Math.pow(1 - localP, 3);
+      yOff = 80 - (yEaseOut * 80);
+    } else {
+      xOff = 1400 - sineInOut(localP) * 3100;
+      const yProgress = Math.min(1.0, localP / 0.55);
+      const yEaseOut = 1 - Math.pow(1 - yProgress, 3);
+      yOff = 80 - (yEaseOut * 80);
+    }
+    rotY = -(xOff / 800) * 60;
+    zOff = -800;
+    if (el.children.length > 0) {
+      const totalChars = el.children.length;
+      for (let i = 0; i < totalChars; i++) {
+        const child = el.children[i];
+        const delay = (i / totalChars) * 0.25;
+        const flyInDuration = 0.35;
+        let childP = Math.max(0, Math.min(1.0, (localP - delay) / flyInDuration));
+        let childOpacity = Math.min(1.0, childP / 0.5);
+        const yEase = 1 - Math.pow(1 - childP, 3);
+        let childY = 60 - (yEase * 60);
+        let childBlur = 24 - (yEase * 24);
+        if (!stopAtCenter) {
+          const outDelay = (i / totalChars) * 0.15;
+          let outP = Math.max(0, Math.min(1.0, (localP - (0.50 + outDelay)) / 0.25));
+          if (outP > 0) {
+            const outEase = outP * outP;
+            childY -= outEase * 60;
+            childBlur += outEase * 24;
+            childOpacity = Math.min(childOpacity, 1.0 - outP);
+          }
+        }
+        child.style.transform = `translate3d(0, ${childY}vh, 0)`;
+        child.style.opacity = childOpacity.toString();
+        child.style.filter = childBlur > 0.1 ? `blur(${childBlur}px)` : 'none';
+      }
+      el.style.opacity = '1';
+    }
+  }
+  el.style.transform = `translate3d(calc(-50% + ${xOff}px), calc(-50% + ${yOff}vh), ${zOff}px) rotateY(${rotY}deg)`;
+}
+
+
+/* ============ DOM refs ============ */
+const word1 = document.getElementById('word1');
+const word2 = document.getElementById('word2');
+const word3 = document.getElementById('word3');
+const glassContainer = document.getElementById('glass-container');
+const glassGradient = document.getElementById('glass-gradient');
+const phase4Container = document.getElementById('phase4-container');
+const phase5Container = document.getElementById('phase5-container');
+const phase6Container = document.getElementById('phase6-container');
+const phase6Footer = document.getElementById('phase6-footer');
+
+const snapLerp = (current, target, speed) => {
+  if (Math.abs(target - current) < 0.0001) return target;
+  return THREE.MathUtils.lerp(current, target, speed);
+};
+
+
 /* ============ animation loop ============ */
 let revealStartTime = 0;
 
@@ -908,6 +1046,14 @@ function animate(time) {
       shaderUniforms.uRevealProgress.value = 1 - Math.pow(1 - progress, 3);
     }
   }
+
+  /* ---- phase windows ---- */
+  const transitionProgress  = Math.min(1.0, scrollProgress / 0.12);
+  const phase3Progress      = Math.max(0, Math.min(1.0, (scrollProgress - 0.40) / 0.14));
+  const phase4Progress      = Math.max(0, Math.min(1.0, (scrollProgress - 0.54) / 0.14));
+  const phase5Progress      = Math.max(0, Math.min(1.0, (scrollProgress - 0.68) / 0.12));
+  const modelFlyInProgress  = Math.max(0, Math.min(1.0, (scrollProgress - 0.86) / 0.14));
+  const logoShatterProgress = modelFlyInProgress;
 
   /* ---- camera ---- */
   const targetCamX   = THREE.MathUtils.lerp(-1.8, -0.6, transitionProgress);
@@ -982,6 +1128,63 @@ function animate(time) {
         _revealVec.y * 0.5 + 0.5
       );
     }
+  }
+
+  /* ---- flying words ---- */
+  updateWordAnimation(word1, scrollProgress, 0.14, 0.26);
+  updateWordAnimation(word2, scrollProgress, 0.22, 0.34);
+  updateWordAnimation(word3, scrollProgress, 0.30, 0.40, true);
+
+  /* ---- glass stats panel ---- */
+  if (scrollProgress <= 0.54) {
+    const easeIn = phase3Progress * phase3Progress;
+    const glassY = 100 - (easeIn * 100);
+    glassContainer.style.transform = `translateY(${glassY}vh)`;
+    if (glassY < 60) triggerTextReveal('#phase3-title');
+    const currentScale = 0.65 + (0.35 * phase3Progress);
+    glassGradient.style.transform = `translate(-50%, -50%) scale(${currentScale})`;
+    glassGradient.style.borderRadius = `${phase3Progress * 24}px`;
+  } else {
+    const easeOut = 1 - Math.pow(1 - phase4Progress, 3);
+    glassContainer.style.transform = `translateY(${-(easeOut * 100)}vh)`;
+    glassGradient.style.transform = `translate(-50%, -50%) scale(1)`;
+    glassGradient.style.borderRadius = `24px`;
+  }
+
+  /* ---- phase 4 ---- */
+  if (phase4Progress > 0 && phase4Progress < 1) {
+    let op = 1;
+    let ty = 0;
+    if (phase4Progress < 0.2) { op = phase4Progress / 0.2; ty = 50 * (1 - op); }
+    else if (phase4Progress > 0.8) { const p = (phase4Progress - 0.8) / 0.2; op = 1 - p; ty = -50 * p; }
+    phase4Container.style.opacity = op.toString();
+    phase4Container.style.transform = `translateY(${ty}px)`;
+    phase4Container.style.pointerEvents = op > 0.5 ? 'auto' : 'none';
+    if (op > 0.7) triggerTextReveal('#phase4-title');
+  } else {
+    phase4Container.style.opacity = '0';
+    phase4Container.style.pointerEvents = 'none';
+  }
+
+  /* ---- phase 5 ---- */
+  {
+    let op = 0;
+    const sp = scrollProgress;
+    if (sp > 0.74 && sp <= 0.78) op = (sp - 0.74) / 0.04;
+    else if (sp > 0.78 && sp <= 0.82) op = 1;
+    else if (sp > 0.82 && sp < 0.86) op = 1 - (sp - 0.82) / 0.04;
+    phase5Container.style.opacity = op.toString();
+    if (op > 0.7) { triggerTextReveal('#phase5-title-1'); triggerTextReveal('#phase5-title-2'); }
+  }
+
+  /* ---- phase 6 + footer ---- */
+  {
+    const op = Math.max(0, Math.min(1, (scrollProgress - 0.86) / 0.14));
+    phase6Container.style.opacity = op.toString();
+    phase6Container.style.transform = `scale(${0.95 + 0.05 * op})`;
+    const footerY = 100 * (1 - (1 - Math.pow(1 - op, 3)));
+    phase6Footer.style.transform = `translateY(${footerY}vh)`;
+    if (op > 0.7) triggerTextReveal('#phase6-title');
   }
 
   if (mixer) mixer.update(delta);
