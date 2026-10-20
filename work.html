@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Work — Tarun Chintakunta</title>
+<meta name="description" content="Selected work by Tarun Chintakunta: StreamlineOS, Løfte Studios, Skylark Exim, Prime DCX, SettleShort and more. Products, client sites and research." />
+<meta property="og:title" content="Work — Tarun Chintakunta" />
+<meta property="og:description" content="Products, WebGL client sites and AI tools, built end to end." />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:ital,wght@0,200;0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="site.css" />
+<script type="importmap">{ "imports": { "lenis": "https://unpkg.com/lenis@1.3.23/dist/lenis.mjs" } }</script>
+</head>
+<body>
+<div class="bg-grid"></div><div class="bg-blob"></div>
+
+<header class="site-header">
+  <a class="site-logo" href="index.html">Tarun&nbsp;C.</a>
+  <nav class="site-nav">
+    <a href="work.html">work <span class="nav-arrow">↗</span></a>
+    <a href="about.html#skills">skills <span class="nav-arrow">↗</span></a>
+    <a href="about.html">about <span class="nav-arrow">↗</span></a>
+    <a href="contact.html">contact <span class="nav-arrow">↗</span></a>
+  </nav>
+</header>
+
+<main id="work">
+  <section class="page-hero wrap">
+    <div class="label"><span>( W )</span><span>[ <span id="work-count">000</span> projects ]</span></div>
+    <h1 class="display" data-chars>Selected work,<br><b>built end to end</b></h1>
+    <p class="lede reveal">Products I own, sites I build for clients, and the research underneath. Every one of these I shipped from the first sketch to the deploy.</p>
+    <div class="filters reveal" role="group" aria-label="Filter projects">
+      <button class="filter" data-filter="all" aria-pressed="true">All</button>
+      <button class="filter" data-filter="ongoing" aria-pressed="false">Now building</button>
+      <button class="filter" data-filter="product" aria-pressed="false">Products</button>
+      <button class="filter" data-filter="client" aria-pressed="false">Client sites</button>
+      <button class="filter" data-filter="research" aria-pressed="false">Research</button>
+    </div>
+    <hr class="hairline" />
+  </section>
+
+  <section class="section wrap" style="padding-top: 3rem;">
+    <div id="work-grid" class="work-grid"></div>
+  </section>
+
+  <section class="section wrap" id="research-section">
+    <div class="section-head">
+      <div class="label"><span>( R )</span><span>Research &amp; systems</span></div>
+      <p class="body" style="margin:0; max-width: 32rem;">Work from the MSc in Cloud Computing and after: Kubernetes, federated learning, zero trust, edge-fog scheduling. Source on GitHub.</p>
+    </div>
+    <div id="research-rows" class="rows"></div>
+  </section>
+
+  <section class="cta wrap">
+    <h2 class="display reveal">Have something<br><b>like this in mind?</b></h2>
+    <a class="btn btn-solid reveal" href="contact.html">Start a project</a>
+  </section>
+</main>
+
+<footer class="site-footer"></footer>
+
+<script type="module">
+  import { boot, renderWork } from './site.js';
+  renderWork(document.getElementById('work'));
+  boot();
+</script>
+</body>
+</html>

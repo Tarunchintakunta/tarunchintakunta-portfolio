@@ -4,6 +4,8 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Tarun Chintakunta — Portfolio</title>
+<meta name="description" content="Tarun Chintakunta — creative engineer for the interactive web. Products, cinematic WebGL sites and AI tools, built end to end." />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:ital,wght@0,200;0,400;0,500;1,400&display=swap" rel="stylesheet">
@@ -249,16 +251,16 @@ canvas { display: block; }
 <h1 class="hero-title" id="animated-hero-title">Creative engineer for<br><span class="hero-subtitle">the interactive web</span></h1>
 
 <div class="hero-nav preload-hidden reveal-anim from-top">
-  <a href="#">work <span class="nav-arrow">↗</span></a>
-  <a href="#">skills <span class="nav-arrow">↗</span></a>
-  <a href="#">about <span class="nav-arrow">↗</span></a>
-  <a href="#">contact <span class="nav-arrow">↗</span></a>
+  <a href="work.html">work <span class="nav-arrow">↗</span></a>
+  <a href="about.html#skills">skills <span class="nav-arrow">↗</span></a>
+  <a href="about.html">about <span class="nav-arrow">↗</span></a>
+  <a href="contact.html">contact <span class="nav-arrow">↗</span></a>
 </div>
 
 <div class="hero-info-block preload-hidden reveal-anim from-bottom">
   <div class="hi-top"><span>( A )</span><span>[ 001 /004 ]</span></div>
   <div class="hi-text">I design and build fast, tactile interfaces — WebGL, shaders, motion systems and the product thinking that holds them together.</div>
-  <a href="#" class="hi-btn">GET IN TOUCH</a>
+  <a href="contact.html" class="hi-btn">GET IN TOUCH</a>
 </div>
 
 <div class="scroll-content-wrapper">
@@ -316,7 +318,7 @@ canvas { display: block; }
             <div class="skill-col"><span>LLM apps</span><span>RAG pipelines</span><span>Evals</span><span>Agent tooling</span></div>
           </div>
         </div>
-        <a href="#" class="hi-btn" style="margin-top: 2rem; text-transform: uppercase;">DOWNLOAD CV</a>
+        <a href="about.html" class="hi-btn" style="margin-top: 2rem; text-transform: uppercase;">MORE ABOUT ME</a>
       </div>
     </div>
   </div>
@@ -374,21 +376,22 @@ canvas { display: block; }
       <div class="footer-left">
         <h2 style="margin: 0 0 2rem 0; font-weight: 500; font-size: 1.5rem; letter-spacing: -0.02em;">Tarun Chintakunta</h2>
         <div class="footer-heading">Drop your email, I'll reply.</div>
-        <div class="footer-input-group">
-          <input type="email" placeholder="your@email.com" class="footer-input">
-          <button class="footer-submit">Send</button>
-        </div>
+        <form class="footer-input-group" id="footer-form" data-subject="Email drop — portfolio home">
+          <input type="email" name="email" placeholder="your@email.com" class="footer-input" required aria-label="Your email">
+          <button class="footer-submit" type="submit">Send</button>
+        </form>
+        <div class="form-status" id="footer-status" role="status" aria-live="polite" style="font-size: 0.85rem; min-height: 1.3em; margin-bottom: 0.5rem;"></div>
         <div class="footer-subtext">Open to product engineering, creative development and WebGL-heavy builds.</div>
       </div>
       <div class="footer-right">
-        <div class="footer-col"><div class="footer-col-title">Work</div><a href="#">Selected projects</a><a href="#">Case studies</a><a href="#">Experiments</a></div>
-        <div class="footer-col"><div class="footer-col-title">Writing</div><a href="#">Notes</a><a href="#">Shader log</a><a href="#">Talks</a></div>
-        <div class="footer-col"><div class="footer-col-title">Elsewhere</div><a href="#">GitHub</a><a href="#">X / Twitter</a><a href="#">LinkedIn</a></div>
-        <div class="footer-col"><div class="footer-col-title">Contact</div><a href="mailto:escthedeadline@gmail.com">Email</a><a href="#">Resume</a></div>
+        <div class="footer-col"><div class="footer-col-title">Work</div><a href="work.html">Selected projects</a><a href="work.html#product">Products</a><a href="work.html#client">Client sites</a><a href="work.html#research">Research</a></div>
+        <div class="footer-col"><div class="footer-col-title">Now building</div><a href="project.html?p=streamlineos">StreamlineOS</a><a href="project.html?p=lofte-studios">Løfte Studios</a><a href="project.html?p=contextharbor">ContextHarbor</a></div>
+        <div class="footer-col"><div class="footer-col-title">Elsewhere</div><a href="https://github.com/Tarunchintakunta" target="_blank" rel="noopener">GitHub</a><a href="https://www.streamlineos.in" target="_blank" rel="noopener">StreamlineOS</a></div>
+        <div class="footer-col"><div class="footer-col-title">Contact</div><a href="mailto:tarunchintakunta@gmail.com">tarunchintakunta@gmail.com</a><a href="contact.html">Start a project</a><a href="about.html">About</a></div>
       </div>
     </div>
     <div class="footer-line"></div>
-    <div class="footer-bottom">© 2026 Tarun Chintakunta. All rights reserved.</div>
+    <div class="footer-bottom">© <span id="footer-year">2026</span> Tarun Chintakunta. All rights reserved.</div>
   </div>
 </div>
 
@@ -407,6 +410,32 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import Lenis from 'lenis';
+
+/* ============ footer email drop → tarunchintakunta@gmail.com ============ */
+{
+  const EMAIL = 'tarunchintakunta@gmail.com';
+  const form = document.getElementById('footer-form');
+  const status = document.getElementById('footer-status');
+  form.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    if (!form.reportValidity()) return;
+    const email = form.email.value.trim();
+    const btn = form.querySelector('button');
+    btn.disabled = true; status.textContent = '';
+    try {
+      const res = await fetch(`https://formsubmit.co/ajax/${EMAIL}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ email, _subject: form.dataset.subject, _replyto: email, _captcha: 'false', _template: 'table', message: 'Email drop from the portfolio home page.' })
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || String(json.success) === 'false') throw new Error(json.message || `HTTP ${res.status}`);
+      form.reset(); status.textContent = 'Got it. I’ll reply within a day.';
+    } catch (err) {
+      status.innerHTML = `Couldn’t send. Email me directly: <a href="mailto:${EMAIL}?subject=${encodeURIComponent(form.dataset.subject)}" style="color:#000">${EMAIL}</a>`;
+    } finally { btn.disabled = false; }
+  });
+  document.getElementById('footer-year').textContent = new Date().getFullYear();
+}
 
 const ASSET_BASE_URL = 'https://api.getlayers.ai/storage/v1/object/public/public/assets/clarix-281ac6c399';
 
