@@ -72,6 +72,22 @@ export const PROJECTS = [
     ]
   },
   {
+    slug: 'vaivamm-capital', title: 'Vaivamm Capital Advisors', kind: 'client', status: 'live', year: '2026',
+    role: 'Design & full-stack', live: 'https://vaivammcapital.com', image: 'assets/work/vaivamm.jpg',
+    summary: 'Marketing site and client portal for a Hyderabad investment management and trading advisory firm: plans, process, demo booking and sign-in, on Next.js.',
+    stack: ['Next.js', 'React', 'TypeScript', 'Turbopack', 'Vercel'],
+    chapters: [
+      ['The brief', ['A newly registered advisory firm needed to look established from day one: clear plans, a visible process, and a way for prospects to book a conversation without a phone call.']],
+      ['What I built', [
+        'A fast, server-rendered marketing site: hero with live-style portfolio chart, stat cards, trust strip, and a five-step “How we work” process from onboarding to tax documentation.',
+        'Plan cards for each investment product with key features and detail pages, plus a FAQ and client stories section.',
+        'Demo booking and client sign-in flows, so the site doubles as the front door to the client area.',
+        'Deployed on Vercel with Next.js and Turbopack builds for quick iteration as the firm’s offering changes.'
+      ]],
+      ['Status', ['Live at vaivammcapital.com.']]
+    ]
+  },
+  {
     slug: 'settleshort', title: 'SettleShort', kind: 'product', status: 'live', year: '2026',
     role: 'Design & full-stack', live: 'https://settleshort.vercel.app', repo: `${GITHUB}/settleshort`, image: 'assets/work/settleshort.jpg',
     summary: 'Receipt in. Settled out. One approve. AI reads receipts, PDFs and Slack messages, flags duplicates, and pays teammates through PayPal after a single human approval.',
