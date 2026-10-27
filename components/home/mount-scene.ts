@@ -1,441 +1,65 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Tarun Chintakunta — Portfolio</title>
-<meta name="description" content="Tarun Chintakunta — creative engineer for the interactive web. Products, cinematic WebGL sites and AI tools, built end to end." />
-<link rel="icon" href="favicon.svg" type="image/svg+xml" />
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Sarabun:ital,wght@0,200;0,400;0,500;1,400&display=swap" rel="stylesheet">
-<style>
-::-webkit-scrollbar { display: none; }
-html { font-size: max(12px, 0.833333vw); }
-body {
-  margin: 0;
-  overflow-x: hidden;
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-  background-color: #ffffff;
-  height: 2400vh;
-  font-family: 'Sarabun', sans-serif;
-}
-canvas { display: block; }
-
-.preload-hidden { opacity: 0 !important; pointer-events: none !important; }
-.reveal-anim {
-  transition: transform 1.6s cubic-bezier(0.2, 0.8, 0.2, 1) 0.6s, opacity 1.6s ease 0.6s;
-  will-change: transform, opacity;
-}
-.preload-hidden.reveal-anim.from-top { transform: translateY(-20px); }
-.preload-hidden.reveal-anim.from-bottom { transform: translateY(20px); }
-
-/* ---------- hero ---------- */
-.hero-logo {
-  position: absolute; top: 2.5rem; left: 3.125rem; z-index: 5;
-  font-size: 1.1rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: #000;
-}
-.hero-title {
-  position: absolute; top: 43%; transform: translateY(-50%); left: 3.125rem;
-  font-weight: 200; font-size: max(2.5rem, 7vw); color: #000; margin: 0; z-index: 2;
-  pointer-events: none; line-height: 1.0; white-space: nowrap;
-}
-.char-mask {
-  display: inline-block; overflow: hidden; vertical-align: bottom;
-  padding-top: 0.2em; margin-top: -0.2em;
-  padding-bottom: 1.2em; margin-bottom: -1.2em; perspective: 500px;
-}
-.hero-char {
-  display: inline-block;
-  transform: translateY(110%) translateZ(-60px) rotateX(-65deg);
-  transform-origin: bottom center; filter: blur(14px); opacity: 0;
-  will-change: transform, filter, opacity;
-  transition: transform 1.6s cubic-bezier(0.2, 0.8, 0.2, 1), filter 1.6s ease, opacity 1.2s ease;
-}
-.hero-char.revealed { transform: translateY(0) translateZ(0) rotateX(0deg); filter: blur(0px); opacity: 1; }
-.animated-title .hero-char {
-  transition: transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1), filter 0.8s ease, opacity 0.6s ease;
-}
-.hero-subtitle { font-weight: 400; }
-
-.hero-nav {
-  position: absolute; top: 2.5rem; right: 3.125rem; z-index: 5;
-  display: flex; flex-direction: column; align-items: flex-end; gap: 0.75rem;
-}
-.hero-nav a {
-  color: #000; text-decoration: none; font-size: 1.1rem; font-weight: 400;
-  text-transform: uppercase; display: flex; align-items: center; gap: 0.5rem;
-  transition: transform 0.2s ease; cursor: pointer;
-}
-.hero-nav a:hover { transform: translateX(-4px); }
-.hero-nav a .nav-arrow { font-size: 1.2rem; line-height: 1; }
-
-.hero-info-block {
-  position: absolute; bottom: 3.125rem; left: 3.125rem; z-index: 5;
-  color: #000; width: 20rem; display: flex; flex-direction: column;
-}
-.hi-top { display: flex; justify-content: space-between; font-size: 1.1rem; font-weight: 400; text-transform: uppercase; margin-bottom: 2rem; }
-.hi-text { font-size: 1.0625rem; line-height: 1.5; opacity: 0.7; margin-bottom: 2.5rem; }
-.hi-btn {
-  align-self: flex-start; padding: 0.875rem 3rem; border: 1px solid #000;
-  border-radius: 2.5rem; background: rgba(255,255,255,0.1);
-  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-  color: #000; text-decoration: none; font-size: 0.95rem; letter-spacing: 1px;
-  transition: background 0.2s, transform 0.2s;
-}
-.hi-btn:hover { background: rgba(255,255,255,0.35); transform: translateY(-2px); }
-
-/* ---------- scrolling DOM band ---------- */
-.scroll-content-wrapper {
-  position: absolute; top: calc(100vh + 34.375rem); left: 0; width: 100%;
-  z-index: 2; display: flex; flex-direction: column;
-}
-.scroll-title-container { padding-left: 3.125rem; margin-bottom: 37.5rem; }
-.scroll-title-container h3,
-.feature-title {
-  font-weight: 200; font-size: max(2.625rem, 5.5vw);
-  letter-spacing: -0.02em; white-space: nowrap; color: #000; margin: 0; line-height: 1.1;
-}
-.clients-container { width: 100%; display: flex; flex-direction: column; margin-bottom: 37.5rem; }
-.clients-subtitle { font-size: 1.1rem; text-transform: uppercase; padding-left: 3.125rem; margin-bottom: 1rem; color: #000; }
-.clients-line {
-  height: 1px; margin: 0 3.125rem 3rem 3.125rem;
-  background: linear-gradient(to right, #0091ff, #00aaff, #8000ff, #ff0099, #ff0000);
-}
-.marquee-container { width: 100%; overflow: hidden; white-space: nowrap; opacity: 0.85; }
-.marquee-content { display: inline-flex; align-items: center; gap: 6rem; padding-right: 6rem; animation: marquee 28s linear infinite; }
-@keyframes marquee { 0% { transform: translateX(-50%); } 100% { transform: translateX(0); } }
-.marquee-item { font-size: 2.25rem; font-weight: 200; letter-spacing: -0.02em; color: #000; opacity: 0.8; }
-
-.feature-container { width: 100%; display: flex; flex-direction: column; }
-.split-feature-container {
-  width: 100%; display: flex; flex-direction: column;
-  padding: 0 3.125rem; box-sizing: border-box; margin-top: 37.5rem;
-}
-.split-bottom { display: flex; flex-direction: column; align-items: flex-start; max-width: 45rem; }
-
-/* ---------- phase 4 (skills) ---------- */
-.phase4-container {
-  position: fixed; top: 0; left: 0; width: 100%; height: 100vh; z-index: 5;
-  pointer-events: none; display: flex; align-items: flex-end; justify-content: flex-end;
-  opacity: 0; transform: translateY(50px);
-}
-.phase4-container .split-feature-container {
-  pointer-events: auto; margin-top: 0; padding-top: 4rem; padding-bottom: 4rem;
-  height: 100vh; justify-content: space-between; width: auto; align-items: flex-start;
-}
-.skill-grid { display: grid; grid-template-columns: repeat(3, minmax(9rem, 1fr)); gap: 1.25rem 2.5rem; margin-top: 2rem; }
-.skill-col-title { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.45; margin-bottom: 0.6rem; }
-.skill-col { display: flex; flex-direction: column; gap: 0.4rem; font-size: 1rem; opacity: 0.85; }
-
-/* ---------- phase 5 / 6 ---------- */
-.phase5-container { position: fixed; top: 0; left: 0; width: 100%; height: 100vh; z-index: 4; pointer-events: none; opacity: 0; }
-.phase5-title-left { position: absolute; top: 2.5rem; left: 3.125rem; text-align: left; margin: 0; }
-.phase5-title-right { position: absolute; bottom: 2.5rem; right: 3.125rem; text-align: right; margin: 0; }
-.phase5-desc-left { position: absolute; bottom: 2.5rem; left: 3.125rem; text-align: left; max-width: 25rem; margin: 0; }
-.phase5-label-right { position: absolute; top: 2.5rem; right: 3.125rem; width: 12rem; margin: 0; }
-
-.phase6-container { position: fixed; top: 0; left: 0; width: 100%; height: 100vh; z-index: 2; pointer-events: none; opacity: 0; }
-.phase6-title {
-  position: absolute; top: 30vh; transform: translateY(-50%); left: 0; width: 100%;
-  font-weight: 200; font-size: max(2.5rem, 7vw); color: #000; margin: 0; line-height: 1.0;
-  text-align: center; white-space: nowrap; pointer-events: none;
-}
-.phase6-footer-wrapper { position: fixed; top: 0; left: 0; width: 100%; height: 100vh; z-index: 4; pointer-events: none; transform: translateY(100vh); }
-.phase6-footer-wrapper * { pointer-events: auto; }
-.glass-footer {
-  position: absolute; bottom: 2.5rem; left: 3.125rem; right: 3.125rem; padding: 3rem;
-  background: rgba(255,255,255,0.4); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-  border-radius: 2rem; border: 1px solid rgba(255,255,255,0.5); box-shadow: 0 8px 32px rgba(0,0,0,0.05);
-  display: flex; flex-direction: column; color: #000;
-}
-.footer-top { display: flex; justify-content: space-between; }
-.footer-left { width: 35%; display: flex; flex-direction: column; }
-.footer-heading { font-size: 1rem; font-weight: 500; margin-bottom: 1.5rem; }
-.footer-input-group { display: flex; background: rgba(255,255,255,0.6); border-radius: 2rem; padding: 0.3rem; margin-bottom: 1rem; border: 1px solid rgba(0,0,0,0.1); max-width: 22rem; }
-.footer-input { flex: 1; background: transparent; border: none; outline: none; padding-left: 1rem; font-family: inherit; font-size: 0.9rem; }
-.footer-submit { background: #000; color: #fff; border: none; border-radius: 2rem; padding: 0.6rem 1.5rem; font-family: inherit; cursor: pointer; transition: transform 0.2s; }
-.footer-submit:hover { transform: scale(1.05); }
-.footer-subtext { font-size: 0.75rem; opacity: 0.6; line-height: 1.4; max-width: 22rem; }
-.footer-right { display: flex; gap: 5rem; padding-right: 2rem; }
-.footer-col { display: flex; flex-direction: column; gap: 1rem; }
-.footer-col-title { font-size: 0.9rem; font-weight: 500; margin-bottom: 0.5rem; }
-.footer-col a { color: #000; opacity: 0.7; text-decoration: none; font-size: 0.85rem; transition: opacity 0.2s; }
-.footer-col a:hover { opacity: 1; }
-.footer-line { height: 1px; background: rgba(0,0,0,0.1); margin: 3rem 0 1.5rem 0; }
-.footer-bottom { text-align: center; font-size: 0.8rem; opacity: 0.6; }
-
-/* ---------- flying words ---------- */
-.words-container { position: fixed; top: 0; left: 0; width: 100%; height: 100vh; perspective: 1500px; z-index: 2; pointer-events: none; }
-.flying-word {
-  position: absolute; top: 50%; left: 50%; font-weight: 400;
-  font-size: max(80px, 25vw); color: #000; margin: 0; padding: 0 0.2em; opacity: 0;
-  white-space: nowrap; transform: translate3d(-50%, -50%, 0) rotateY(0deg);
-}
-.flying-word .char { display: inline-block; padding: 0 0.15em; margin: 0 -0.15em; }
-
-/* ---------- glass stats panel ---------- */
-.glass-container {
-  position: fixed; bottom: 0; left: 0; width: 100%; height: 100vh;
-  background: rgba(255,255,255,0.15); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
-  border-top: 1px solid rgba(255,255,255,0.4); z-index: 10; transform: translateY(100vh); pointer-events: none;
-}
-.glass-gradient-wrapper {
-  position: absolute; top: 50%; left: 50%; width: calc(100% - 8rem); height: calc(100% - 8rem);
-  transform: translate(-50%, -50%) scale(0.65); border-radius: 0px; overflow: hidden; pointer-events: auto;
-}
-.glass-gradient-img {
-  position: absolute; inset: 0; z-index: 1; opacity: 0.45;
-  background:
-    radial-gradient(60% 80% at 12% 20%, #0091ff 0%, rgba(0,145,255,0) 60%),
-    radial-gradient(50% 70% at 80% 15%, #8000ff 0%, rgba(128,0,255,0) 65%),
-    radial-gradient(70% 60% at 70% 85%, #ff0099 0%, rgba(255,0,153,0) 65%),
-    radial-gradient(55% 55% at 30% 90%, #ff0000 0%, rgba(255,0,0,0) 60%),
-    linear-gradient(120deg, #00aaff, #ffffff 60%, #ff0099);
-  filter: blur(10px) saturate(1.1);
-}
-.gradient-content {
-  position: absolute; inset: 0; z-index: 2; padding: 2rem;
-  box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; color: #000;
-}
-.gc-top-left { font-size: max(2.625rem, 5.5vw); font-weight: 200; line-height: 1.1; letter-spacing: -0.02em; white-space: nowrap; }
-.gc-bottom { display: flex; justify-content: space-between; align-items: flex-end; }
-.gc-bottom-left { font-size: 14px; opacity: 0.8; }
-.gc-bottom-right { display: flex; gap: 3.75rem; align-items: flex-end; }
-.stat-col { position: relative; padding-left: 20px; display: flex; flex-direction: column; gap: 16px; }
-.stat-col-tall { margin-bottom: 120px; }
-.stat-col::before {
-  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 1px;
-  background: linear-gradient(to bottom, rgba(0,0,0,0), rgba(0,0,0,0.2) 10%, rgba(0,0,0,0.2) 90%, rgba(0,0,0,0));
-}
-.stat-col-tall::before { bottom: -120px; }
-.stat-num { font-size: max(42px, 5.5vw); font-weight: 200; line-height: 1; }
-.stat-desc { font-size: 13px; line-height: 1.5; opacity: 0.85; }
-.stat-sub { opacity: 0.5; font-size: 11px; }
-.stat-btn {
-  width: 44px; height: 44px; border-radius: 50%; background: rgba(0,0,0,0.05);
-  display: flex; align-items: center; justify-content: center; margin-top: 8px; cursor: pointer;
-  transition: background 0.2s; border: 1px solid rgba(0,0,0,0.1);
-}
-.stat-btn:hover { background: rgba(0,0,0,0.15); }
-
-@media (max-width: 900px) {
-  .hero-nav { gap: 0.4rem; }
-  .hero-nav a { font-size: 0.9rem; }
-  .footer-top { flex-direction: column; gap: 2.5rem; }
-  .footer-left { width: 100%; }
-  .footer-right { flex-wrap: wrap; gap: 2rem; }
-  .skill-grid { grid-template-columns: repeat(2, minmax(8rem, 1fr)); }
-  .gc-bottom { flex-direction: column; align-items: flex-start; gap: 1.5rem; }
-  .gc-bottom-right { gap: 1.5rem; }
-  .stat-col-tall { margin-bottom: 0; }
-  .stat-col-tall::before { bottom: 0; }
-}
-</style>
-</head>
-<body>
-
-<!-- PRELOADER ODOMETER -->
-<div id="preloader" style="position: fixed; top: 0; left: 0; width: 100%; height: 100vh; z-index: 9999; pointer-events: none; transition: opacity 1s ease;">
-  <div style="position: absolute; top: 2.5rem; left: 3.125rem; color: #000; font-weight: 200; font-size: 4rem; letter-spacing: -0.02em; line-height: 1;">
-    [ &nbsp;
-    <div style="height: 4rem; overflow: hidden; position: relative; width: 6.5rem; display: inline-block; vertical-align: top;">
-      <div id="odometer-numbers" style="position: absolute; top: 0; left: 0; width: 100%; transition: transform 0.05s linear; text-align: center;"></div>
-    </div>
-    &nbsp; / 100 ]
-  </div>
-</div>
-
-<div class="hero-logo preload-hidden reveal-anim from-top">Tarun&nbsp;C.</div>
-<h1 class="hero-title" id="animated-hero-title">Creative engineer for<br><span class="hero-subtitle">the interactive web</span></h1>
-
-<div class="hero-nav preload-hidden reveal-anim from-top">
-  <a href="work.html">work <span class="nav-arrow">↗</span></a>
-  <a href="about.html#skills">skills <span class="nav-arrow">↗</span></a>
-  <a href="about.html">about <span class="nav-arrow">↗</span></a>
-  <a href="contact.html">contact <span class="nav-arrow">↗</span></a>
-</div>
-
-<div class="hero-info-block preload-hidden reveal-anim from-bottom">
-  <div class="hi-top"><span>( A )</span><span>[ 001 /004 ]</span></div>
-  <div class="hi-text">I design and build fast, tactile interfaces — WebGL, shaders, motion systems and the product thinking that holds them together.</div>
-  <a href="contact.html" class="hi-btn">GET IN TOUCH</a>
-</div>
-
-<div class="scroll-content-wrapper">
-  <div class="scroll-title-container" id="scroll-title">
-    <h3 class="animated-title flow-title">Interfaces that move<br>the way people<br><span style="font-weight: 500;">expect them to</span></h3>
-  </div>
-
-  <div class="clients-container">
-    <div class="clients-subtitle">STACK</div>
-    <div class="clients-line"></div>
-    <div class="marquee-container">
-      <div class="marquee-content" id="marquee-content"></div>
-    </div>
-  </div>
-
-  <div class="feature-container" style="align-items: flex-end; padding: 0 3.125rem; box-sizing: border-box;">
-    <h3 class="feature-title animated-title flow-title" style="text-align: right;">Shipping products where<br>engineering and<br><span style="font-weight: 500;">craft meet</span></h3>
-  </div>
-</div>
-
-<div class="phase4-container" id="phase4-container">
-  <div class="split-feature-container">
-    <div class="hi-top" style="width: 100%; min-width: 15rem; max-width: 20rem; margin-bottom: 0;">
-      <span>( B )</span><span>[ 002 /004 ]</span>
-    </div>
-    <div style="display: flex; flex-direction: column; align-items: flex-start;">
-      <div class="split-top" style="text-align: left; display: inline-block;">
-        <h3 class="feature-title animated-title" id="phase4-title" style="text-align: left; margin-top: 0;">Everything I use to<br><span style="font-weight: 500;">get things shipped</span></h3>
-        <div class="clients-line" style="margin: 3rem 0; width: 100%;"></div>
-      </div>
-      <div class="split-bottom">
-        <div class="skill-grid">
-          <div>
-            <div class="skill-col-title">Frontend</div>
-            <div class="skill-col"><span>TypeScript</span><span>React / Next.js</span><span>Svelte</span><span>CSS architecture</span></div>
-          </div>
-          <div>
-            <div class="skill-col-title">Graphics</div>
-            <div class="skill-col"><span>Three.js</span><span>GLSL shaders</span><span>WebGPU</span><span>GSAP / Lenis</span></div>
-          </div>
-          <div>
-            <div class="skill-col-title">Backend</div>
-            <div class="skill-col"><span>Node / Bun</span><span>Python</span><span>Postgres</span><span>Edge functions</span></div>
-          </div>
-          <div>
-            <div class="skill-col-title">Design</div>
-            <div class="skill-col"><span>Figma</span><span>Motion systems</span><span>Design tokens</span><span>Prototyping</span></div>
-          </div>
-          <div>
-            <div class="skill-col-title">Infra</div>
-            <div class="skill-col"><span>Docker</span><span>CI / CD</span><span>Cloudflare</span><span>Observability</span></div>
-          </div>
-          <div>
-            <div class="skill-col-title">AI</div>
-            <div class="skill-col"><span>LLM apps</span><span>RAG pipelines</span><span>Evals</span><span>Agent tooling</span></div>
-          </div>
-        </div>
-        <a href="about.html" class="hi-btn" style="margin-top: 2rem; text-transform: uppercase;">MORE ABOUT ME</a>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="words-container">
-  <div class="flying-word" id="word1"></div>
-  <div class="flying-word" id="word2"></div>
-  <div class="flying-word" id="word3"></div>
-</div>
-
-<div class="glass-container" id="glass-container">
-  <div id="glass-gradient" class="glass-gradient-wrapper">
-    <div class="glass-gradient-img"></div>
-    <div class="gradient-content">
-      <div class="gc-top-left animated-title" id="phase3-title">Every build is a mix of systems,<br>motion and taste</div>
-      <div class="gc-bottom">
-        <div class="gc-bottom-left">How I work</div>
-        <div class="gc-bottom-right">
-          <div class="stat-col stat-col-tall">
-            <div class="stat-num">40+</div>
-            <div class="stat-desc">products shipped<br><span class="stat-sub">*web, mobile, internal</span></div>
-            <div class="stat-btn">→</div>
-          </div>
-          <div class="stat-col">
-            <div class="stat-num">60fps</div>
-            <div class="stat-desc">the only acceptable<br>frame budget</div>
-            <div class="stat-btn">→</div>
-          </div>
-          <div class="stat-col">
-            <div class="stat-num">2+</div>
-            <div class="stat-desc">years building<br><span class="stat-sub">*and still counting</span></div>
-            <div class="stat-btn">→</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="phase5-container" id="phase5-container">
-  <div class="hi-top phase5-label-right"><span>( C )</span><span>[ 003 /004 ]</span></div>
-  <h3 class="feature-title phase5-title-left animated-title" id="phase5-title-1">Built from pixels up</h3>
-  <div class="hi-text phase5-desc-left">From shader math to deploy pipelines — I like owning the whole path from idea to the thing people actually touch.</div>
-  <h3 class="feature-title phase5-title-right animated-title" id="phase5-title-2">Available for<br><span style="font-weight: 500;">new work</span></h3>
-</div>
-
-<div class="phase6-container" id="phase6-container">
-  <h3 class="phase6-title animated-title" id="phase6-title">Let's build<br><span style="font-weight: 400;">something good</span></h3>
-</div>
-
-<div class="phase6-footer-wrapper" id="phase6-footer">
-  <div class="glass-footer">
-    <div class="footer-top">
-      <div class="footer-left">
-        <h2 style="margin: 0 0 2rem 0; font-weight: 500; font-size: 1.5rem; letter-spacing: -0.02em;">Tarun Chintakunta</h2>
-        <div class="footer-heading">Drop your email, I'll reply.</div>
-        <form class="footer-input-group" id="footer-form" data-subject="Email drop — portfolio home">
-          <input type="email" name="email" placeholder="your@email.com" class="footer-input" required aria-label="Your email">
-          <button class="footer-submit" type="submit">Send</button>
-        </form>
-        <div class="form-status" id="footer-status" role="status" aria-live="polite" style="font-size: 0.85rem; min-height: 1.3em; margin-bottom: 0.5rem;"></div>
-        <div class="footer-subtext">Open to product engineering, creative development and WebGL-heavy builds.</div>
-      </div>
-      <div class="footer-right">
-        <div class="footer-col"><div class="footer-col-title">Work</div><a href="work.html">Selected projects</a><a href="work.html#product">Products</a><a href="work.html#client">Client sites</a><a href="work.html#research">Research</a></div>
-        <div class="footer-col"><div class="footer-col-title">Now building</div><a href="project.html?p=streamlineos">StreamlineOS</a><a href="project.html?p=lofte-studios">Løfte Studios</a><a href="project.html?p=contextharbor">ContextHarbor</a></div>
-        <div class="footer-col"><div class="footer-col-title">Elsewhere</div><a href="https://github.com/Tarunchintakunta" target="_blank" rel="noopener">GitHub</a><a href="https://www.streamlineos.in" target="_blank" rel="noopener">StreamlineOS</a></div>
-        <div class="footer-col"><div class="footer-col-title">Contact</div><a href="mailto:tarunchintakunta@gmail.com">tarunchintakunta@gmail.com</a><a href="contact.html">Start a project</a><a href="about.html">About</a></div>
-      </div>
-    </div>
-    <div class="footer-line"></div>
-    <div class="footer-bottom">© <span id="footer-year">2026</span> Tarun Chintakunta. All rights reserved.</div>
-  </div>
-</div>
-
-<script type="importmap">
-{
-  "imports": {
-    "three": "https://unpkg.com/three@0.184.0/build/three.module.js",
-    "three/examples/jsm/": "https://unpkg.com/three@0.184.0/examples/jsm/",
-    "lenis": "https://unpkg.com/lenis@1.3.23/dist/lenis.mjs"
-  }
-}
-</script>
-<script type="module">
+// @ts-nocheck
+// Mechanical port of the original index.html scene. Phase windows are unchanged.
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import Lenis from 'lenis';
 
-/* ============ footer email drop → tarunchintakunta@gmail.com ============ */
-{
-  const EMAIL = 'tarunchintakunta@gmail.com';
-  const form = document.getElementById('footer-form');
-  const status = document.getElementById('footer-status');
-  form.addEventListener('submit', async (ev) => {
-    ev.preventDefault();
-    if (!form.reportValidity()) return;
-    const email = form.email.value.trim();
-    const btn = form.querySelector('button');
-    btn.disabled = true; status.textContent = '';
-    try {
-      const res = await fetch(`https://formsubmit.co/ajax/${EMAIL}`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ email, _subject: form.dataset.subject, _replyto: email, _captcha: 'false', _template: 'table', message: 'Email drop from the portfolio home page.' })
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok || String(json.success) === 'false') throw new Error(json.message || `HTTP ${res.status}`);
-      form.reset(); status.textContent = 'Got it. I’ll reply within a day.';
-    } catch (err) {
-      status.innerHTML = `Couldn’t send. Email me directly: <a href="mailto:${EMAIL}?subject=${encodeURIComponent(form.dataset.subject)}" style="color:#000">${EMAIL}</a>`;
-    } finally { btn.disabled = false; }
-  });
-  document.getElementById('footer-year').textContent = new Date().getFullYear();
-}
+export function mountHomeScene(root: HTMLElement): () => void {
+  let disposed = false;
+  let rafId = 0;
+  let titleObserver = null;
+  let modelGiveUp = false;
+  let modelTimer = 0;
+  const ac = new AbortController();
+  const pending = new Set();
+  const setTimeout = (fn, ms) => {
+    const id = window.setTimeout(() => {
+      pending.delete(id);
+      if (!disposed) fn();
+    }, ms);
+    pending.add(id);
+    return id;
+  };
+  const byId = (id) => {
+    const el = root.querySelector('#' + id);
+    if (!el) throw new Error('Missing #' + id);
+    return el;
+  };
+  const dprCap = matchMedia('(max-width: 900px)').matches ? 1.5 : 2;
+  const skipPreloader = (() => {
+    try { return sessionStorage.getItem('tc-preloader-seen') === '1'; } catch (e) { return false; }
+  })();
+
+  function applyPreloaderSkip() {
+    if (!skipPreloader) return;
+    preloaderDone = true;
+    heroRevealed = true;
+    preloaderPoints.visible = false;
+    const pre = byId('preloader');
+    pre.style.display = 'none';
+    root.querySelectorAll('.preload-hidden').forEach((el) => el.classList.remove('preload-hidden'));
+    root.querySelectorAll('#animated-hero-title .hero-char').forEach((c) => c.classList.add('revealed'));
+  }
+
+  function disposeMaterial(material) {
+    if (!material) return;
+    const list = Array.isArray(material) ? material : [material];
+    for (const m of list) {
+      for (const value of Object.values(m)) {
+        if (value && value.isTexture) value.dispose();
+      }
+      m.dispose?.();
+    }
+  }
+
+  function disposeScene(target) {
+    target.traverse((child) => {
+      if (child.geometry) child.geometry.dispose();
+      if (child.material) disposeMaterial(child.material);
+    });
+  }
 
 const ASSET_BASE_URL = 'https://api.getlayers.ai/storage/v1/object/public/public/assets/clarix-281ac6c399';
 
@@ -447,16 +71,16 @@ const lenis = new Lenis({
 
 /* ============ marquee (text stack, two sets for seamless loop) ============ */
 const STACK = ['TypeScript', 'Three.js', 'GLSL', 'React', 'Next.js', 'Node', 'Python', 'Postgres', 'GSAP', 'Figma', 'Docker'];
-document.getElementById('marquee-content').innerHTML =
+byId('marquee-content').innerHTML =
   [...STACK, ...STACK].map(s => `<span class="marquee-item">${s}</span>`).join('');
 
 /* ============ flying words ============ */
 const splitWord = (el, word) => {
   el.innerHTML = [...word].map(c => `<span class="char">${c}</span>`).join('');
 };
-splitWord(document.getElementById('word1'), 'design');
-splitWord(document.getElementById('word2'), 'build');
-splitWord(document.getElementById('word3'), 'ship');
+splitWord(byId('word1'), 'design');
+splitWord(byId('word2'), 'build');
+splitWord(byId('word3'), 'ship');
 
 /* ============ scenes ============ */
 const bgScene = new THREE.Scene();
@@ -469,22 +93,22 @@ camera.position.set(0, 1, 5);
 
 const rendererBg = new THREE.WebGLRenderer({ antialias: true });
 rendererBg.setSize(window.innerWidth, window.innerHeight);
-rendererBg.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+rendererBg.setPixelRatio(Math.min(window.devicePixelRatio, dprCap));
 rendererBg.domElement.style.position = 'fixed';
 rendererBg.domElement.style.top = '0';
 rendererBg.domElement.style.left = '0';
 rendererBg.domElement.style.zIndex = '1';
-document.body.appendChild(rendererBg.domElement);
+root.appendChild(rendererBg.domElement);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, dprCap));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.domElement.style.position = 'fixed';
 renderer.domElement.style.top = '0';
 renderer.domElement.style.left = '0';
 renderer.domElement.style.zIndex = '3';
-document.body.appendChild(renderer.domElement);
+root.appendChild(renderer.domElement);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enabled = false;
@@ -711,11 +335,20 @@ let heroRevealed = false;
 let mixer = null;
 
 const dracoLoader = new DRACOLoader();
-dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/');
+dracoLoader.setDecoderPath('/draco/');
 const loader = new GLTFLoader();
 loader.setDRACOLoader(dracoLoader);
 
+modelTimer = window.setTimeout(() => { modelGiveUp = true; }, 8000);
 loader.load(`${ASSET_BASE_URL}/model.glb`, (gltf) => {
+  window.clearTimeout(modelTimer);
+  if (disposed || modelGiveUp) {
+    gltf.scene.traverse((child) => {
+      if (child.geometry) child.geometry.dispose();
+      if (child.material) disposeMaterial(child.material);
+    });
+    return;
+  }
   const model = gltf.scene;
 
   // auto center + scale so max dimension becomes 5 units
@@ -753,7 +386,11 @@ loader.load(`${ASSET_BASE_URL}/model.glb`, (gltf) => {
     mixer = new THREE.AnimationMixer(model);
     gltf.animations.forEach(clip => mixer.clipAction(clip).play());
   }
-}, undefined, (err) => console.error('model.glb failed to load', err));
+}, undefined, (err) => {
+  window.clearTimeout(modelTimer);
+  modelGiveUp = true;
+  console.error('model.glb failed to load', err);
+});
 
 camera.position.set(-1.8, -1.0, 6.5);
 camera.lookAt(-1.8, 0.5, 0);
@@ -857,16 +494,17 @@ const particleMat = new THREE.ShaderMaterial({
 let logoParticles = null;
 
 function buildNameParticles() {
+  const fontFamily = getComputedStyle(document.body).fontFamily || 'sans-serif';
   const W = 450;
   const cv = document.createElement('canvas');
   const ctx = cv.getContext('2d');
   cv.width = W;
-  ctx.font = `700 150px Sarabun, sans-serif`;
+  ctx.font = `700 150px ${fontFamily}`;
   const metrics = ctx.measureText(NAME_TEXT);
   const scaleToFit = (W - 20) / metrics.width;
   const fontPx = Math.floor(150 * scaleToFit);
   cv.height = Math.round(fontPx * 1.35);
-  ctx.font = `700 ${fontPx}px Sarabun, sans-serif`;
+  ctx.font = `700 ${fontPx}px ${fontFamily}`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = '#fff';
@@ -895,7 +533,7 @@ function buildNameParticles() {
     }
   }
 
-  const ambientCount = 3500;
+  const ambientCount = matchMedia('(max-width: 900px)').matches ? 1200 : 3500;
   for (let i = 0; i < ambientCount; i++) {
     pts.push({
       x: w / 2 + (Math.random() - 0.5) * w * 3.0,
@@ -1015,7 +653,7 @@ preloaderPoints.lookAt(-1.8, -1.0, 6.5);
 scene.add(preloaderPoints);
 
 /* ============ odometer ============ */
-const odoNumbers = document.getElementById('odometer-numbers');
+const odoNumbers = byId('odometer-numbers');
 odoNumbers.innerHTML = Array.from({ length: 101 }, (_, i) =>
   `<div style="height:4rem;line-height:4rem;text-align:center;">${String(i).padStart(3, '0')}</div>`
 ).join('');
@@ -1033,7 +671,6 @@ function advanceLoader() {
   loaderStepIndex++;
   setTimeout(advanceLoader, 300);
 }
-setTimeout(advanceLoader, 200);
 
 /* ============ title splitting ============ */
 function splitNode(node) {
@@ -1065,7 +702,7 @@ function splitNode(node) {
 }
 
 function initTitles() {
-  const targets = [document.getElementById('animated-hero-title'), ...document.querySelectorAll('.animated-title')];
+  const targets = [byId('animated-hero-title'), ...root.querySelectorAll('.animated-title')];
   new Set(targets).forEach(el => {
     if (!el) return;
     const split = splitNode(el);
@@ -1073,21 +710,22 @@ function initTitles() {
     el.appendChild(split);
   });
 
-  const io = new IntersectionObserver((entries) => {
+  titleObserver = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (!entry.isIntersecting) return;
       entry.target.querySelectorAll('.hero-char').forEach((c, i) => setTimeout(() => c.classList.add('revealed'), i * 10));
-      io.unobserve(entry.target);
+      titleObserver.unobserve(entry.target);
     });
   }, { threshold: 0.3 });
-  document.querySelectorAll('.animated-title.flow-title').forEach(el => io.observe(el));
+  root.querySelectorAll('.animated-title.flow-title').forEach(el => titleObserver.observe(el));
 }
 initTitles();
+applyPreloaderSkip();
 
 const _revealedOnce = new Set();
 function triggerTextReveal(selector) {
   if (_revealedOnce.has(selector)) return;
-  const el = document.querySelector(selector);
+  const el = root.querySelector(selector);
   if (!el) return;
   _revealedOnce.add(selector);
   el.querySelectorAll('.hero-char').forEach((c, i) => setTimeout(() => c.classList.add('revealed'), i * 10));
@@ -1103,12 +741,12 @@ window.addEventListener('scroll', () => {
   const pauseScroll = window.innerHeight * 1;
   const animationMaxScroll = Math.max(1, maxScroll - pauseScroll);
   scrollProgress = Math.max(0, Math.min(window.scrollY / animationMaxScroll, 1.0));
-}, { passive: true });
+}, { passive: true, signal: ac.signal });
 
 window.addEventListener('mousemove', (event) => {
   targetMouse.x = event.clientX / window.innerWidth;
   targetMouse.y = 1.0 - (event.clientY / window.innerHeight);
-});
+}, { signal: ac.signal });
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -1118,7 +756,7 @@ window.addEventListener('resize', () => {
   shaderUniforms.resolution.value.set(window.innerWidth, window.innerHeight);
   const _newRatio = window.innerWidth / 1200;
   responsiveScale = _newRatio <= 1.0 ? _newRatio : 1.0 + (_newRatio - 1.0) * 0.4;
-});
+}, { signal: ac.signal });
 
 /* ============ flying words driver ============ */
 function updateWordAnimation(el, p, start, end, stopAtCenter = false) {
@@ -1190,15 +828,15 @@ function updateWordAnimation(el, p, start, end, stopAtCenter = false) {
 }
 
 /* ============ DOM refs ============ */
-const word1 = document.getElementById('word1');
-const word2 = document.getElementById('word2');
-const word3 = document.getElementById('word3');
-const glassContainer = document.getElementById('glass-container');
-const glassGradient = document.getElementById('glass-gradient');
-const phase4Container = document.getElementById('phase4-container');
-const phase5Container = document.getElementById('phase5-container');
-const phase6Container = document.getElementById('phase6-container');
-const phase6Footer = document.getElementById('phase6-footer');
+const word1 = byId('word1');
+const word2 = byId('word2');
+const word3 = byId('word3');
+const glassContainer = byId('glass-container');
+const glassGradient = byId('glass-gradient');
+const phase4Container = byId('phase4-container');
+const phase5Container = byId('phase5-container');
+const phase6Container = byId('phase6-container');
+const phase6Footer = byId('phase6-footer');
 
 const snapLerp = (current, target, speed) => {
   if (Math.abs(target - current) < 0.0001) return target;
@@ -1209,7 +847,8 @@ const snapLerp = (current, target, speed) => {
 let revealStartTime = 0;
 
 function animate(time) {
-  requestAnimationFrame(animate);
+  if (disposed) return;
+  rafId = requestAnimationFrame(animate);
   if (time) lenis.raf(time);
   const delta = clock.getDelta();
   shaderUniforms.time.value += delta;
@@ -1227,11 +866,12 @@ function animate(time) {
       if (preloaderShatter > 1.0) {
         preloaderDone = true;
         heroRevealed = true;
+        try { sessionStorage.setItem('tc-preloader-seen', '1'); } catch (e) {}
         preloaderPoints.visible = false;
         if (mainModel) mainModel.visible = true;
-        document.getElementById('preloader').style.opacity = '0';
-        document.querySelectorAll('.preload-hidden').forEach(el => el.classList.remove('preload-hidden'));
-        const chars = document.querySelectorAll('#animated-hero-title .hero-char');
+        byId('preloader').style.opacity = '0';
+        root.querySelectorAll('.preload-hidden').forEach(el => el.classList.remove('preload-hidden'));
+        const chars = root.querySelectorAll('#animated-hero-title .hero-char');
         setTimeout(() => {
           chars.forEach((char, index) => setTimeout(() => char.classList.add('revealed'), index * 25));
         }, 150);
@@ -1427,7 +1067,25 @@ function animate(time) {
   rendererBg.render(bgScene, camera);
   renderer.render(scene, camera);
 }
-animate();
-</script>
-</body>
-</html>
+  rafId = requestAnimationFrame(animate);
+
+  if (!skipPreloader) setTimeout(advanceLoader, 200);
+
+  return () => {
+    disposed = true;
+    modelGiveUp = true;
+    window.clearTimeout(modelTimer);
+    ac.abort();
+    cancelAnimationFrame(rafId);
+    pending.forEach((id) => window.clearTimeout(id));
+    titleObserver?.disconnect();
+    try { lenis.destroy(); } catch (e) {}
+    try { controls.dispose(); } catch (e) {}
+    try { mixer?.stopAllAction(); } catch (e) {}
+    try { dracoLoader.dispose(); } catch (e) {}
+    try { disposeScene(scene); } catch (e) {}
+    try { disposeScene(bgScene); } catch (e) {}
+    try { renderer.dispose(); renderer.forceContextLoss(); renderer.domElement.remove(); } catch (e) {}
+    try { rendererBg.dispose(); rendererBg.forceContextLoss(); rendererBg.domElement.remove(); } catch (e) {}
+  };
+}
